@@ -7,16 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { AES, enc } from 'crypto-js';
-import { totp } from 'otplib';
+import * as OTPAuth from 'otpauth';
 import { randomBytes } from 'crypto';
 import { GenerateQrcodeDto } from './dto/generate-qrcode.dto';
 import { CheckQrcodeDto } from './dto/check-qrcode.dto';
 import { ConfigService } from '@nestjs/config';
-
-totp.options = {
-  step: 15 * 60,
-  window: 1,
-};
 
 @Injectable()
 export class AppService {
@@ -25,6 +20,7 @@ export class AppService {
     private readonly usersRepository: Repository<User>,
     private readonly configService: ConfigService,
   ) {}
+
   private readonly AES_SECRET_KEY =
     this.configService.get<string>('AES_SECRET_KEY');
 
@@ -53,11 +49,19 @@ export class AppService {
 
   async generateQrcode(generateQrcodeDto: GenerateQrcodeDto) {
     const user = await this.getUser(generateQrcodeDto.id);
+    const totp = new OTPAuth.TOTP({
+      issuer: 'ACME',
+      label: 'AzureDiamond',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: user.secretKey,
+    });
     const message = [
       generateQrcodeDto.id,
       generateQrcodeDto.companyId,
       generateQrcodeDto.name,
-      totp.generate(user.secretKey),
+      totp.generate(),
     ].join('|');
 
     return {
@@ -75,7 +79,15 @@ export class AppService {
       const [id, companyId, name, token] = params;
 
       const user = await this.getUser(+id);
-      const isValid = totp.check(token, user.secretKey);
+      const totp = new OTPAuth.TOTP({
+        issuer: 'ACME',
+        label: 'AzureDiamond',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: user.secretKey,
+      });
+      const isValid = totp.validate({ token, window: +id > 0 ? 1 : 30 });
 
       return {
         id: +id,
