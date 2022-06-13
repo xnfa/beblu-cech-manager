@@ -51,11 +51,11 @@ export class AppService {
     const user = await this.getUser(generateQrcodeDto.id);
     const totp = new OTPAuth.TOTP({
       issuer: 'ACME',
-      label: 'AzureDiamond',
+      label: 'Beblu',
       algorithm: 'SHA1',
       digits: 6,
       period: 30,
-      secret: user.secretKey,
+      secret: OTPAuth.Secret.fromHex(user.secretKey),
     });
     const message = [
       generateQrcodeDto.id,
@@ -81,13 +81,14 @@ export class AppService {
       const user = await this.getUser(+id);
       const totp = new OTPAuth.TOTP({
         issuer: 'ACME',
-        label: 'AzureDiamond',
+        label: 'Beblu',
         algorithm: 'SHA1',
         digits: 6,
         period: 30,
-        secret: user.secretKey,
+        secret: OTPAuth.Secret.fromHex(user.secretKey),
       });
-      const isValid = totp.validate({ token, window: +id > 0 ? 1 : 30 });
+      const isValid =
+        totp.validate({ token, window: +id === 2147483647 ? 30 : 1 }) !== null;
 
       return {
         id: +id,
