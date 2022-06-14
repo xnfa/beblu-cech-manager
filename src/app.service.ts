@@ -88,7 +88,7 @@ export class AppService {
         secret: OTPAuth.Secret.fromHex(user.secretKey),
       });
       const isValid =
-        totp.validate({ token, window: +id === 2147483647 ? 30 : 1 }) !== null;
+        totp.validate({ token, window: +id === 2147483647 ? 30 : 30 }) !== null;
 
       return {
         id: +id,
